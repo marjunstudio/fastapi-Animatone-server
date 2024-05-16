@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+
 import firebase_admin
 from firebase_admin import auth, credentials
 
@@ -9,6 +11,14 @@ firebase_admin.initialize_app(cred)
 
 # サーバーの起動
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # フロントエンドのオリジン
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # リクエストボディの定義
 class Message(BaseModel):
@@ -49,3 +59,15 @@ def read_root(cred = Depends(get_current_user)):
 def create_message(message: Message, cred = Depends(get_current_user)):
     uid = cred.get("uid")
     return {"message": f"Hello, {message.name}! Your uid is [{uid}]"}
+
+#トークン検証のエンドポイント
+@app.post("/verify-token")
+def verify_token(cred: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
+    user = get_current_user(cred)
+    return {"uid": user["uid"], "email": user["email"]}
+
+#認証が必要なエンドポイントの保護
+@app.get("/protected-endpoint")
+def protected_endpoint(user: dict = Depends(get_current_user)):
+    return {"message": f"Hello, {user['email']}! This is a protected endpoint."}
+
