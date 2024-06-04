@@ -6,11 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import auth, credentials
 
+from app.handlers import composers
+
 cred = credentials.Certificate("./serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 
 # サーバーの起動
 app = FastAPI()
+
+app.include_router(composers.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,13 +53,13 @@ async def root():
     return {"message": "Hello World"}
 
 # getを定義
-@app.get("/hello")
+@app.get("/hello", tags=["ハロー"], summary="ログインユーザーにハローと表示する")
 def read_root(cred = Depends(get_current_user)):
     uid = cred.get("uid")
     return {"message": f"Hello, {uid}!"}
 
 # postを定義
-@app.post("/hello")
+@app.post("/hello", tags=["ハロー"], summary="ログイン処理を行い、成功時にハローを表示する")
 def create_message(message: Message, cred = Depends(get_current_user)):
     uid = cred.get("uid")
     return {"message": f"Hello, {message.name}! Your uid is [{uid}]"}
@@ -70,4 +74,3 @@ def verify_token(cred: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
 @app.get("/protected-endpoint")
 def protected_endpoint(user: dict = Depends(get_current_user)):
     return {"message": f"Hello, {user['email']}! This is a protected endpoint."}
-
